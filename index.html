@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>4. 게임 컨텐츠 디자인 / 스토리텔링 (A)</title>
+<style>
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+    --bg-void: #08090d;
+    --bg-surface: #0e1019;
+    --bg-elevated: #141722;
+    --bg-card: #181c2a;
+    --bg-glass: rgba(20, 23, 34, 0.75);
+    --border-subtle: rgba(255,255,255,0.04);
+    --border-dim: rgba(255,255,255,0.08);
+    --border-accent: rgba(129,140,248,0.3);
+    --text-primary: #eaedf3;
+    --text-secondary: #8b95a8;
+    --text-muted: #5a6478;
+    --accent: #818cf8;
+    --accent-glow: rgba(129,140,248,0.15);
+    --accent-bright: #a5b4fc;
+    --gold: #f0c040;
+    --gold-dim: rgba(240,192,64,0.12);
+    --green: #6ee7a0;
+    --green-dim: rgba(110,231,160,0.1);
+    --red: #f87171;
+    --red-dim: rgba(248,113,113,0.1);
+    --radius: 12px;
+    --radius-sm: 8px;
+    --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+    font-family: 'Noto Sans KR', -apple-system, sans-serif;
+    background: var(--bg-void);
+    color: var(--text-primary);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+}
+
+/* 배경 그라디언트 앰비언트 */
+body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: -1;
+    background:
+        radial-gradient(ellipse 80% 50% at 20% 0%, rgba(129,140,248,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 100%, rgba(240,192,64,0.03) 0%, transparent 50%);
+}
+
+/* ========== 오디오 바 (Glass Morphism) ========== */
+#audio-bar {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--bg-glass);
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    border-bottom: 1px solid var(--border-subtle);
+    padding: 14px 24px;
+}
+#audio-controls {
+    display: flex; align-items: center; gap: 14px;
+    max-width: 860px; margin: 0 auto;
+}
+#play-btn {
+    background: var(--accent);
+    border: none; color: #fff;
+    width: 40px; height: 40px; border-radius: 50%;
+    cursor: pointer; font-size: 15px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 20px var(--accent-glow), 0 2px 8px rgba(0,0,0,0.3);
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+#play-btn:hover {
+    background: var(--accent-bright);
+    transform: scale(1.08);
+    box-shadow: 0 0 30px rgba(129,140,248,0.3), 0 4px 12px rgba(0,0,0,0.4);
+}
+.skip-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    width: 32px; height: 32px; border-radius: 50%;
+    cursor: pointer; font-size: 12px;
+    display: flex; align-items: center; justify-content: center;
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+.skip-btn:hover {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+}
+#time-display {
+    color: var(--text-muted); font-size: 12px;
+    min-width: 90px; font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.5px;
+}
+
+/* 커스텀 시크바 */
+#seek-bar {
+    flex: 1; height: 4px;
+    -webkit-appearance: none; appearance: none;
+    background: var(--border-dim);
+    border-radius: 2px; outline: none;
+    cursor: pointer; transition: height 0.15s ease;
+}
+#seek-bar:hover { height: 6px; }
+#seek-bar::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 10px var(--accent-glow);
+    cursor: pointer;
+    transition: var(--transition);
+}
+#seek-bar::-webkit-slider-thumb:hover {
+    transform: scale(1.3);
+    box-shadow: 0 0 16px rgba(129,140,248,0.4);
+}
+#seek-bar::-moz-range-thumb {
+    width: 14px; height: 14px;
+    border-radius: 50%; border: none;
+    background: var(--accent);
+    cursor: pointer;
+}
+
+#speed-select {
+    background: var(--bg-elevated); color: var(--text-secondary);
+    border: 1px solid var(--border-dim);
+    border-radius: 6px; padding: 5px 10px;
+    font-size: 11px; font-family: 'JetBrains Mono', monospace;
+    cursor: pointer; outline: none;
+    transition: var(--transition);
+}
+#speed-select:hover { border-color: var(--accent); }
+
+/* ========== 슬라이드 네비게이션 ========== */
+#slide-nav {
+    display: flex; gap: 3px; padding: 12px 24px;
+    overflow-x: auto; background: var(--bg-surface);
+    border-bottom: 1px solid var(--border-subtle);
+    justify-content: center; flex-wrap: wrap;
+    scrollbar-width: none;
+}
+#slide-nav::-webkit-scrollbar { display: none; }
+
+.nav-dot {
+    width: 34px; height: 30px; border-radius: 6px;
+    border: 1px solid transparent; cursor: pointer;
+    font-size: 11px; font-weight: 500;
+    font-family: 'JetBrains Mono', monospace;
+    display: flex; align-items: center; justify-content: center;
+    transition: var(--transition);
+    position: relative;
+}
+.nav-dot.has-audio {
+    background: rgba(129,140,248,0.08); color: var(--accent);
+    border-color: rgba(129,140,248,0.12);
+}
+.nav-dot.no-audio {
+    background: rgba(255,255,255,0.02); color: var(--text-muted);
+    opacity: 0.5;
+}
+.nav-dot:hover {
+    opacity: 1;
+    transform: translateY(-1px);
+    border-color: var(--accent);
+}
+.nav-dot.active {
+    background: var(--accent); color: #fff;
+    transform: translateY(-2px) scale(1.05); opacity: 1;
+    box-shadow: 0 4px 16px var(--accent-glow);
+    border-color: transparent;
+}
+
+/* 슬라이드 전환 애니메이션 */
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+#slide-content {
+    animation: slideIn 0.35s ease-out;
+}
+
+#slide-header {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
+}
+#slide-id {
+    color: var(--accent); font-size: 11px; letter-spacing: 3px;
+    font-weight: 500; text-transform: uppercase;
+    font-family: 'JetBrains Mono', monospace;
+}
+#slide-badge {
+    font-size: 10px; padding: 3px 10px; border-radius: 20px;
+    font-weight: 500; letter-spacing: 0.3px;
+}
+.badge-audio {
+    background: var(--green-dim); color: var(--green);
+    border: 1px solid rgba(110,231,160,0.15);
+}
+.badge-no-audio {
+    background: var(--red-dim); color: var(--red);
+    border: 1px solid rgba(248,113,113,0.12);
+}
+
+#slide-title {
+    font-size: 26px; font-weight: 900; color: #fff;
+    margin-bottom: 32px; line-height: 1.5;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-dim);
+    letter-spacing: -0.3px;
+}
+
+/* ========== 슬라이드 콘텐츠 블록 ========== */
+
+.slide-text {
+    color: var(--text-secondary); font-size: 14.5px;
+    line-height: 2; margin-bottom: 20px;
+    font-weight: 300;
+}
+.slide-text strong {
+    color: var(--gold); font-weight: 500;
+    background: var(--gold-dim);
+    padding: 1px 5px; border-radius: 3px;
+}
+.slide-text em {
+    color: var(--accent-bright); font-style: normal; font-weight: 400;
+}
+
+/* 인용 블록 */
+.slide-quote {
+    background: var(--bg-card);
+    border-left: 2px solid var(--accent);
+    padding: 18px 22px; margin-bottom: 16px;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    color: var(--text-primary); font-size: 14px;
+    line-height: 1.85; font-weight: 300;
+}
+.slide-quote strong {
+    color: var(--gold); font-weight: 500;
+}
+
+/* 포인트 리스트 */
+.slide-points {
+    list-style: none; margin-bottom: 20px; padding-left: 0;
+    display: flex; flex-direction: column; gap: 6px;
+}
+.slide-points li {
+    position: relative;
+    padding: 12px 16px 12px 36px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-sm);
+    font-size: 13.5px; line-height: 1.7;
+    color: var(--text-secondary); font-weight: 300;
+    border: 1px solid var(--border-subtle);
+    transition: var(--transition);
+}
+.slide-points li:hover {
+    border-color: var(--border-accent);
+    background: var(--bg-card);
+}
+.slide-points li::before {
+    content: '';
+    position: absolute; left: 15px; top: 50%;
+    transform: translateY(-50%);
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent-glow);
+}
+.slide-points li strong {
+    color: var(--gold); font-weight: 500;
+}
+
+/* 노트 블록 (aside) */
+.slide-note {
+    display: flex; gap: 14px; align-items: flex-start;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-dim);
+    border-radius: var(--radius);
+    padding: 18px 20px; margin-top: 28px;
+    position: relative; overflow: hidden;
+}
+.slide-note::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--gold), var(--accent));
+    opacity: 0.5;
+}
+.note-icon { font-size: 18px; flex-shrink: 0; margin-top: 2px; }
+.note-content {
+    color: var(--text-secondary); font-size: 13px;
+    line-height: 1.8; font-weight: 300;
+}
+.note-content strong { color: var(--text-primary); font-weight: 500; }
+
+/* 이미지 */
+.slide-image {
+    margin-bottom: 20px; text-align: center;
+}
+.slide-image img {
+    max-width: 100%; border-radius: var(--radius);
+    border: 1px solid var(--border-dim);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+/* ========== 정의 카드 (> **제목** 본문 패턴) ========== */
+.slide-def-card {
+    background: var(--bg-card);
+    border-left: 2px solid var(--accent);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 18px 22px;
+    margin-bottom: 12px;
+    transition: var(--transition);
+}
+.slide-def-card:hover {
+    border-left-color: var(--gold);
+    background: rgba(24,28,42,0.9);
+}
+.def-title {
+    color: var(--gold); font-size: 14.5px; font-weight: 700;
+    margin-bottom: 8px; letter-spacing: 0.2px;
+}
+.def-desc {
+    color: var(--text-secondary); font-size: 13.5px;
+    line-height: 1.8; font-weight: 300;
+}
+.def-desc strong { color: var(--text-primary); font-weight: 500; }
+
+/* ========== 섹션 카드 (**볼드 헤더** + 본문) ========== */
+.slide-card {
+    background: var(--bg-elevated);
+    border-radius: var(--radius-sm);
+    padding: 16px 20px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border-subtle);
+    transition: var(--transition);
+}
+.slide-card:hover {
+    border-color: var(--border-accent);
+    transform: translateX(3px);
+}
+.card-heading {
+    color: var(--gold); font-size: 14px; font-weight: 700;
+    margin-bottom: 6px; display: flex; align-items: center; gap: 8px;
+}
+.card-heading::before {
+    content: ''; display: inline-block;
+    width: 3px; height: 14px;
+    background: var(--accent); border-radius: 2px;
+    flex-shrink: 0;
+}
+.card-desc {
+    color: var(--text-secondary); font-size: 13px;
+    line-height: 1.8; font-weight: 300;
+    padding-left: 11px;
+}
+.card-desc strong { color: var(--text-primary); font-weight: 500; }
+.card-desc em { color: var(--accent-bright); font-style: normal; }
+
+/* ========== 오디오 구간 맵 (재생바 아래 타임라인) ========== */
+#audio-map {
+    max-width: 860px; margin: 8px auto 0;
+    height: 22px;
+    position: relative;
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--bg-elevated);
+}
+.map-segment {
+    position: absolute; top: 0; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 500;
+    font-family: 'JetBrains Mono', monospace;
+    color: rgba(255,255,255,0.7);
+    cursor: pointer;
+    transition: filter 0.15s;
+    overflow: hidden;
+    white-space: nowrap;
+    border-right: 1px solid var(--bg-void);
+}
+.map-segment:hover {
+    filter: brightness(1.3);
+    z-index: 1;
+}
+.map-segment.active {
+    filter: brightness(1.4);
+    color: #fff;
+    font-weight: 700;
+}
+/* 구간별 색상 (순서대로 순환) */
+.map-segment:nth-child(odd)  { background: rgba(129,140,248,0.35); }
+.map-segment:nth-child(even) { background: rgba(240,192,64,0.25); }
+.map-gap {
+    position: absolute; top: 0; height: 100%;
+    background: var(--bg-elevated);
+}
+
+/* ========== 메인 레이아웃 (콘텐츠 + 인덱스) ========== */
+#main-layout {
+    display: flex;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+#slide-area {
+    flex: 1;
+    min-width: 0;
+}
+#slide-container {
+    max-width: 800px; margin: 0 auto;
+    padding: 40px 28px 80px;
+}
+
+/* ========== 인덱스 패널 (우측 사이드바) ========== */
+#index-panel {
+    width: 240px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--border-subtle);
+    background: var(--bg-surface);
+    position: sticky;
+    top: 80px;
+    height: calc(100vh - 80px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-dim) transparent;
+}
+#index-panel::-webkit-scrollbar { width: 4px; }
+#index-panel::-webkit-scrollbar-thumb { background: var(--border-dim); border-radius: 2px; }
+
+#index-header {
+    padding: 16px 16px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-family: 'JetBrains Mono', monospace;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.index-item {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: var(--transition);
+    border-left: 2px solid transparent;
+    font-size: 12px;
+    line-height: 1.5;
+}
+.index-item:hover {
+    background: var(--bg-elevated);
+    border-left-color: var(--border-accent);
+}
+.index-item.active {
+    background: var(--bg-card);
+    border-left-color: var(--accent);
+}
+.index-item .idx-id {
+    color: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    flex-shrink: 0;
+    min-width: 28px;
+}
+.index-item .idx-title {
+    color: var(--text-secondary);
+    font-weight: 300;
+}
+.index-item.active .idx-title {
+    color: var(--text-primary);
+    font-weight: 400;
+}
+.index-item.has-audio .idx-id::after {
+    content: ' ♪';
+    color: var(--green);
+    font-size: 8px;
+}
+
+/* ========== 반응형 ========== */
+@media (max-width: 900px) {
+    #index-panel { display: none; }
+    #main-layout { display: block; }
+}
+@media (max-width: 640px) {
+    /* 오디오 바 */
+    #audio-bar { padding: 10px 12px; }
+    #audio-controls { gap: 6px; }
+    #play-btn { width: 36px; height: 36px; font-size: 14px; }
+    .skip-btn { width: 30px; height: 30px; font-size: 11px; }
+    #time-display { min-width: 70px; font-size: 10px; }
+    #speed-select { padding: 4px 6px; font-size: 10px; }
+
+    /* 네비게이션 도트: 가로 스크롤 */
+    #slide-nav {
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        padding: 8px 12px;
+        gap: 2px;
+    }
+    .nav-dot { width: 28px; height: 26px; font-size: 9px; flex-shrink: 0; }
+
+    /* 슬라이드 영역 */
+    #slide-container { padding: 20px 14px 80px; }
+    #slide-title { font-size: 20px; margin-bottom: 20px; padding-bottom: 14px; }
+    #slide-header { gap: 8px; margin-bottom: 8px; }
+    #slide-id { font-size: 10px; }
+    #slide-badge { font-size: 9px; padding: 2px 8px; }
+
+    /* 콘텐츠 블록 */
+    .slide-text { font-size: 13.5px; line-height: 1.9; }
+    .slide-card { padding: 16px; }
+    .slide-def-card { padding: 14px; }
+    .slide-note { padding: 14px 16px; font-size: 12.5px; }
+    .slide-points li { font-size: 13.5px; }
+    .slide-image img { max-height: 50vh; }
+
+    /* 자막 바 */
+    #subtitle-bar { padding: 10px 14px; }
+    #subtitle-text { font-size: 0.9rem; }
+}
+
+/* 자막 바 */
+#subtitle-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    text-align: center;
+    padding: 14px 24px;
+    background: rgba(0, 0, 0, 0.82);
+    z-index: 1000;
+    pointer-events: none;
+    min-height: 24px;
+}
+
+#subtitle-text {
+    color: #f0f0f0;
+    font-size: 1.05rem;
+    line-height: 1.5;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+    transition: opacity 0.15s ease;
+}
+
+#subtitle-bar:empty,
+#subtitle-bar:has(#subtitle-text:empty) {
+    opacity: 0;
+}
+
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="audio-bar">
+    <audio id="audio" src="당신의_게임_속_감정은_설계되었다.m4a" preload="auto"></audio>
+    <div id="audio-controls">
+      <button class="skip-btn" onclick="skipTime(-10)">⏪</button>
+      <button id="play-btn" onclick="togglePlay()">▶</button>
+      <button class="skip-btn" onclick="skipTime(10)">⏩</button>
+      <span id="time-display">0:00 / 0:00</span>
+      <input type="range" id="seek-bar" min="0" max="86400" value="0" step="0.1">
+      <select id="speed-select" onchange="changeSpeed(this.value)">
+        <option value="0.75">0.75x</option>
+        <option value="1" selected>1x</option>
+        <option value="1.25">1.25x</option>
+        <option value="1.5">1.5x</option>
+        <option value="2">2x</option>
+      </select>
+    </div>
+    <div id="audio-map"></div>
+  </div>
+  <div id="slide-nav"></div>
+  <div id="main-layout">
+    <div id="slide-area">
+      <div id="slide-container">
+        <div id="slide-header">
+          <span id="slide-id"></span>
+          <span id="slide-badge"></span>
+        </div>
+        <h1 id="slide-title"></h1>
+        <div id="slide-content"></div>
+      </div>
+    </div>
+    <div id="index-panel">
+      <div id="index-header">목차</div>
+      <div id="index-list"></div>
+    </div>
+  </div>
+</div>
+<div id="subtitle-bar">
+  <span id="subtitle-text"></span>
+</div>
+<script>
+const SLIDES = [
+  {
+    "id": "P1",
+    "title": "게임 시나리오 구성하기",
+    "content": "<div class=\"slide-text\">플레이어의 행동에 의미를 부여하고, 시스템을 논리적으로 연결하는 핵심설계 방법론을 배운다.</div>",
+    "hasAudio": true,
+    "start": 0.0,
+    "end": 113.0
+  },
+  {
+    "id": "P2",
+    "title": "게임 시나리오에 대한 오해",
+    "content": "<div class=\"slide-quote\">“2000년 전 암흑신과 창조신의 전쟁으로 인해 어쩌고…”</div>\n<div class=\"slide-text\">많은 사람들이 게임 시나리오를 단순히 그럴듯한 배경 설정이나 긴 텍스트로 생각하지만 이것은 큰 오해이다.</div>\n<div class=\"slide-note\"><div class=\"note-icon\">💡</div><div class=\"note-content\"><strong>시나리오의 진짜 역할</strong><br>게임 시나리오는 단순한 포장이 아니다. 플레이어의 모든 행동에 의미를 부여하고, 게임 시스템을 논리적으로 연결하는 핵심 설계다.<br><strong>텍스트는 게임 시나리오의 핵심이 아니다.</strong></div></div>",
+    "hasAudio": true,
+    "start": 94.0,
+    "end": 126.0
+  },
+  {
+    "id": "P3",
+    "title": "게임 시나리오의 표현 방식 우선순위",
+    "content": "<ul class=\"slide-points\"><li><strong>게임 플레이</strong> 플레이어가 직접 경험하고 행동하는 것이 가장 강력한 스토리텔링 도구이다.</li><li><strong>시각적 표현</strong> 유저가 눈으로 보는 것 - 비주얼, 연출, 애니메이션을 통한 전달이 두 번째이다.</li><li><strong>텍스트</strong> 유저가 읽는 것은 세번째 우선순위이다. 가장 마지막 수단으로 활용하라.</li></ul>\n<div class=\"slide-note\"><div class=\"note-icon\">💡</div><div class=\"note-content\">이후 배우게 될 어떤 다양한 시나리오 이론보다 위의 세 가지 우선순위가 가장 중요하다.</div></div>",
+    "hasAudio": true,
+    "start": 147.0,
+    "end": 160.0
+  },
+  {
+    "id": "P4",
+    "title": "시나리오 표현의 좋은 예",
+    "content": "<div class=\"slide-text\">구슬이 굴러가는 단순한 메커니즘도 훌륭한 연출을 통해 감동적인 이야기로 구성할 수 있다. 플레이 자체가 스토리를 전달하는 가장 강력한 방법이다.</div>",
+    "hasAudio": true,
+    "start": 160.0,
+    "end": 183.0
+  },
+  {
+    "id": "P5",
+    "title": "플레이로 전달하는 스토리",
+    "content": "<div class=\"slide-text\">텍스트, 내레이션, 동영상 같은 일방향적인 전달 방식만이 아닌 <strong>게임 플레이 자체</strong>를 통해 핵전쟁 이후의 세계를 구성할 수 있다. 플레이어가 직접 황폐한 세계를 탐험하고, 생존을 위해 고군분투하며, NPC들과 상호작용하면서 세계관을 자연스럽게 이해하게 된다.</div>",
+    "hasAudio": true,
+    "start": 126.0,
+    "end": 147.0
+  },
+  {
+    "id": "P6",
+    "title": "게임 스토리텔링의 목적",
+    "content": "<div class=\"slide-text\">플레이어의 행동에 의미를 부여하고 시스템을 논리적으로 연결하는 핵심 설계</div>\n<ul class=\"slide-points\"><li><strong>행동의 강력한 동기 부여</strong> 플레이어에게 정서적인 목표를 제공한다. ”공격력을 10 올리세요” → “괴물로부터 아이들을 지키기 위해 무기를 정비하세요.”</li><li><strong>세계관으로의 완전한 몰입</strong> 플레이어가 게임 속 주인공과 자신을 동일시하게 만든다.</li><li><strong>시스템과 메카닉스의 개연성 확보</strong> 게임적 허용이나 복잡한 시스템을 거부감 없이 수용하도록 돕는다. ”화면의 붉은 게이지가 다 떨어지면 게임 오버” → “저주받은 영혼의 잠식”</li><li><strong>플레이 방향성 및 가이드라인 제시</strong> 플레이 흐름을 유지하며 다음 행동으로 자연스러운 유도. 보이지 않는 이정표 역할 갑작스러운 사건이나 동료의 호출은 플레이어의 다음 목표를 직관적으로 이해</li><li><strong>정서적 카타르시스와 여운</strong> 깊은 감동을 주는 결말은 플레이어에게 고유한 경험을 선사</li></ul>",
+    "hasAudio": true,
+    "start": 104.0,
+    "end": 222.0
+  },
+  {
+    "id": "P7",
+    "title": "게임 스토리텔링의 궁극적 목표",
+    "content": "<div class=\"slide-text\">플레이 흐름을 유지하며 다음 행동으로 자연스럽게 유도하는 보이지 않는 이정표 역할을 한다. 갑작스러운 사건이나 동료의 호출은 플레이어의 다음 목표를 직관적으로 이해하게 한다.</div>\n<div class=\"slide-text\">깊은 감동을 주는 결말은 플레이어에게 고유한 경험을 선사하며, 정서적 카타르시스와 여운을 남긴다.</div>\n<div class=\"slide-note\"><div class=\"note-icon\">💡</div><div class=\"note-content\"><strong>몰입이 깨진면 흥이 깨진다</strong><br>유저가 게임 자체의 설정에 깊이 몰입되도록 하는 것!<br><strong>게임이 줄 수 있는 미미크리의 재미를 극대화하는 것이 스토리의 궁극적 목적이다.</strong></div></div>",
+    "hasAudio": true,
+    "start": 183.0,
+    "end": 213.0
+  },
+  {
+    "id": "P8",
+    "title": "시나리오 구성의 핵심 요소",
+    "content": "<div class=\"slide-card\"><div class=\"card-heading\">🗺️세계관</div><div class=\"card-desc\">게임의 시각적 공간적 배경과 그 세계의 법칙을 설정한다. 플레이어가 탐험할 무대를 구축하는 것이다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">🐱캐릭터</div><div class=\"card-desc\">플레이어가 감정을 이입할 대상과 그를 둘러싼 조력자, 적대자들을 설계한다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">🎞️플롯</div><div class=\"card-desc\">사건이 배열되는 순서이다. 플레이어의 선택에 따른 분기를 설계하는 것이 핵심이다.</div></div>\n<div class=\"slide-text\">이 세가지 요소가 유기적으로 결합될 때 강력한 게임 시나리오가 탄생한다.</div>",
+    "hasAudio": false,
+    "start": null,
+    "end": null
+  },
+  {
+    "id": "P9",
+    "title": "게임 시나리오의 5단계 구성",
+    "content": "<div class=\"slide-card\"><div class=\"card-heading\">도입</div><div class=\"card-desc\">: 세계관 설명과 튜토리얼을 결합하여 조작법과 목표를 제시한다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">전개</div><div class=\"card-desc\">: 본격적인 갈등과 모험이 시작된다. 플레이어는 세계를 탐험학고 새로운 캐릭터들을 만난다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">위기</div><div class=\"card-desc\">: 적대 세력의 방해와 난이도 상승. 플레이어는 점차 강한 보상과 성장을 경험한다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">절정</div><div class=\"card-desc\">: 갈등이 폭발하는 시점. 최종 보스전 혹은 가장 중요한 서사적 선택이 이루어진다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">결말</div><div class=\"card-desc\">: 사건의 해결. 멀티 엔딩 등으로 플레이어의 선택에 따른 결과를 보여준다.</div></div>",
+    "hasAudio": false,
+    "start": null,
+    "end": null
+  },
+  {
+    "id": "P10",
+    "title": "갈등",
+    "content": "<div class=\"slide-card\"><div class=\"card-heading\">구성의 핵심이 되는 스토리의 중심 재료</div></div>\n<div class=\"slide-text\">스토리는 갈등과 함께 생겨나고, 갈등을 어떻게 다루느냐가 스토리 구성의 처음이자 끝이자</div>",
+    "hasAudio": true,
+    "start": 222.0,
+    "end": 249.0
+  },
+  {
+    "id": "P11",
+    "title": "갈등의 종류",
+    "content": "<div class=\"slide-card\"><div class=\"card-heading\">내적 갈등</div><div class=\"card-desc\">인물의 심리 안에서 일어나는 갈등이다. 자신의 가치관, 두려움, 욕망 사이의 충돌을 다룬다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">개인 간 갈등</div><div class=\"card-desc\">사람들 간에 발생하는 갈등이다. 주인공과 적대자, 동료 간의 다툼 등이 해당된다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">외부적 갈등</div><div class=\"card-desc\">사회나 물리적 세계와의 갈등이다. 자연재해, 전쟁, 사회 시스템 등과의 대립을 의미한다.</div></div>\n<div class=\"slide-note\"><div class=\"note-icon\">💡</div><div class=\"note-content\">대부분의 게임은 외부적 갈등을 중심으로 구성된다.<br>적을 물리치고, 던전을 정복하며 세계를 구하는 것이 전형적인 형태이다.</div></div>",
+    "hasAudio": true,
+    "start": 233.0,
+    "end": 265.0
+  },
+  {
+    "id": "P12",
+    "title": "갈등의 가공 / 갈등 체크",
+    "content": "<div class=\"slide-card\"><div class=\"card-heading\">고여 있는 갈등</div><div class=\"card-desc\">: 이야기의 전개를 막는 장애 요소</div></div>\n<div class=\"slide-quote\">“겁쟁이인 주인공이 대마왕과 맞서 싸워야 하는데… 그냥 몸 사리고 지낼 것 같아!”</div>\n<div class=\"slide-card\"><div class=\"card-heading\">튀는 갈등</div><div class=\"card-desc\">: 비상식적이고 감정 이입이 안 되는 이야기의 전개</div></div>\n<div class=\"slide-quote\">“겁쟁이인 주인공이 여자 친구의 응원 때문에 대마왕과 싸우는 용사가 되기로 결심…”</div>",
+    "hasAudio": true,
+    "start": 258.0,
+    "end": 295.0
+  },
+  {
+    "id": "P13",
+    "title": "갈등을 암시하고 원인을 설정",
+    "content": "<div class=\"slide-card\"><div class=\"card-heading\">가치관과 신념의 차이</div><div class=\"card-desc\">무엇이 옳은가에 대한 철학적인 갈등. 플레이어의 선택에 따라 멀티엔딩으로 유도할 수 있다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">한정된 자원의 쟁탈</div><div class=\"card-desc\">가장 직관적이고 강력한 갈등의 원인. 생존이나 힘과 직결된다. 진영전이나 전략 시뮬레이션 게임의 주요 동기로 활용된다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">정보의 불균형과 오해</div><div class=\"card-desc\">비극적인 분위기를 조성할 때 유용. 진실을 모르거나 의도적인 정보 왜곡으로 발생한다. 반전 요소로 많이 사용된다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">과거의 상처와 복수</div><div class=\"card-desc\">캐릭터의 감정선을 자극하는 개인적이고 뜨거운 갈등. 캐릭터의 고유 능력을 각성하거나 강렬한 동기를 가진 매력적인 악역에 효과적이다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">피할 수 없는 환경적 압박</div><div class=\"card-desc\">누구의 잘못도 아니지만 상황 자체에 갈등을 만들어내는 경우. 생존 게임에서 긴박감을 조성할 때 핵심적인 역할을 한다.</div></div>",
+    "hasAudio": true,
+    "start": 301.0,
+    "end": 349.0
+  },
+  {
+    "id": "P14",
+    "title": "갈등의 가공 / 공격 포인트 설정",
+    "content": "<div class=\"slide-text\">공격 포인트는 갈등의 양상을 바꿔주는 계기이다. 이야기에 반전과 긴장감을 더하는 핵심 장치이다.</div>\n<div class=\"slide-card\"><div class=\"card-heading\">속수무책으로 마왕의 졸개들에게 당하던 주인공</div><div class=\"card-desc\">→ 죽음을 맞이하게 된 순간, 아버지가 준 목걸이에서 서번트가 튀어나와 졸개들을 쓸어버림</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">배트맨의 등장으로 제압되던 악당들, 조커라는 새로운 존재의 등장</div><div class=\"card-desc\">→ 협력 플레이로 조커 검거, 그러나 조커의 계략으로 인한 하비 덴트의 불행한 사건 발생</div></div>",
+    "hasAudio": false,
+    "start": null,
+    "end": null
+  },
+  {
+    "id": "P15",
+    "title": "구성이란?",
+    "content": "<div class=\"slide-text\">원인과 결과라는 실로 사건을 줄줄 꿰는 것</div>\n<div class=\"slide-text\">모든 사건은 이전 사건의 결과이자, 다음 사건의 원인이 되어야 한다.</div>",
+    "hasAudio": true,
+    "start": 364.0,
+    "end": 385.0
+  },
+  {
+    "id": "P16",
+    "title": "갈등에는 분명한 답이 없거나 양측 모두 합리적인 사정이 있어야 한다.",
+    "content": "<div class=\"slide-quote\">“대마왕, 너는 왜 지구를 정복하려고 하지?”<br>”당연한거 아냐? 나는 대마왕이니까!” (x)<br>”고향의 생존을 위해서” (o)</div>\n<div class=\"slide-text\">악역에게도 나름의 합리적인 이유와 배경이 있어야 갈등이 깊어진다.</div>",
+    "hasAudio": true,
+    "start": 295.0,
+    "end": 337.0
+  },
+  {
+    "id": "P17",
+    "title": "플롯 : 사건을 논리적으로 엮어낸 설계도",
+    "content": "<div class=\"slide-image\"><img src=\"data:image/png;base64,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\" alt=\"강의 이미지\"></div>\n<div class=\"slide-text\">스토리 vs 플롯</div>\n<ul class=\"slide-points\"><li>스토리 : “왕이 죽고, 왕비가 죽었다” (시간 순서대로 나열)</li><li>플롯 : “왕이 죽자 왕비가 슬픔에 겨워 죽었다” (인과관계를 부여)</li></ul>\n<div class=\"slide-text\"></div>",
+    "hasAudio": true,
+    "start": 349.0,
+    "end": 385.0
+  },
+  {
+    "id": "P18",
+    "title": "플롯의 3대 필수 요소",
+    "content": "<div class=\"slide-card\"><div class=\"card-heading\">⛓️‍💥인과관계</div><div class=\"card-desc\">모든 사건은 앞선 사건의 결과여야 한다. 우연 남발은 플롯을 망치는 지름길이다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">🥊긴장과 갈등</div><div class=\"card-desc\">플롯은 갈등이 고조되고 해소되는 과정을 설계하는 것이다. 앞서 배운 갈등의 5가지 원인들이 여기서 사용된다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">✨변화</div><div class=\"card-desc\">플롯이 끝났을 때 캐릭터나 세계는 반드시 시작점과 다른 상태가 되어야 한다.</div></div>",
+    "hasAudio": false,
+    "start": null,
+    "end": null
+  },
+  {
+    "id": "P19",
+    "title": "게임 플롯의 구조적 유형",
+    "content": "<div class=\"slide-card\"><div class=\"card-heading\">선형적 플롯</div><div class=\"card-desc\">시작부터 끝까지 하나의 정해진 길을 따라간다. 제작자가 의도한 강력한 감동과 연출을 전달하기 쉽다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">Ex</div><div class=\"card-desc\">: 라오어, 갓오브워</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">분기형 플롯</div><div class=\"card-desc\">플레이어의 선택에 따라 이야기가 여러 갈래로 나뉜다. 플레이어에게 선택의 책임감과 ‘나만의 이야기’라는 느낌을 준다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">Ex</div><div class=\"card-desc\">: 디비휴, 위쳐3</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">창발적 플롯</div><div class=\"card-desc\">제작자가 정해놓은 스토리는 최소화하고, 플레이어가 스스로 이야기를 만든다. 무한한 자유도와 예상치못한 재미를 준다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">Ex</div><div class=\"card-desc\">: 심즈, 마인크래프트</div></div>",
+    "hasAudio": true,
+    "start": 385.0,
+    "end": 422.0
+  },
+  {
+    "id": "P20",
+    "title": "좋은 플롯을 만드는 기획 기술",
+    "content": "<div class=\"slide-card\"><div class=\"card-heading\">복선과 회수 - 체호프의 총</div><div class=\"card-desc\">1막에서 총이 나왔다면 3막에서 반드시 발사되어야 한다는 의미. 플롯에서 등장한 모든 요소는 의미있어야 한다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">페이싱</div><div class=\"card-desc\">긴장감을 조절하는 기술. 전투만 계속 한다면 플레이어는 지친다. 긴장 → 이완 → 긴장의 리믐을 타는 것이 플롯</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">훅</div><div class=\"card-desc\">초반 5분 안에 플레이어를 사로잡는  강력한 사건을 배치하라. 이 게임을 계속하고 싶게 만드는 플롯의 첫 단추이다.</div></div>",
+    "hasAudio": true,
+    "start": 422.0,
+    "end": 541.0
+  },
+  {
+    "id": "P21",
+    "title": "조셉 캠벨의 영웅의 여정",
+    "content": "<div class=\"slide-text\">영웅의 존재</div>\n<div class=\"slide-text\">사건에 의해 영웅의 세계가 혼란에 빠진다</div>\n<div class=\"slide-text\">영웅과 일상적인 삶 간에 갭이 생긴다</div>\n<div class=\"slide-text\">영웅은 갭을 극복하기 위해 정상적이고 보수적인 액션을 취하려 하지만 실패한다. 환경은 더더욱 험난해 진다.</div>\n<div class=\"slide-text\">영웅은 밀어닥치는 장애를 극복하기 위해 위험을 무릅쓴다</div>\n<div class=\"slide-text\">새로운 사건, 새로운 정보 등을 통해 반전이 발생한다. 상황은 더욱 심각해지고 두 번째 갭이 시작된다.</div>\n<div class=\"slide-text\">영웅은 더 큰 위험을 무릅쓰면서 두 번째 갭을 극복한다</div>\n<div class=\"slide-text\">또 다른 반전과 함께 세 번째 갭이 열린다</div>\n<div class=\"slide-text\">영웅은 최대의 위험을 감수하고 원하는 대상(보통 일상의 삶으로 되돌아 가는 것)을 얻는다.</div>",
+    "hasAudio": true,
+    "start": 541.0,
+    "end": 573.0
+  },
+  {
+    "id": "P22",
+    "title": "크리스퍼 보글러의 영웅의 여정 12단계",
+    "content": "<div class=\"slide-text\">이 12단계는 게임 스토리 설계의 강력함 프레임워크이다. 각 단계를 게임 매커니즘과 결합하면 몰입도 높은 경험을 만들 수 있다</div>\n<div class=\"slide-card\"><div class=\"card-heading\">일상세계</div><div class=\"card-desc\">: 영웅이 모험을 떠나기 전의 평범한 삶</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">모험의 소명</div><div class=\"card-desc\">:삶을 변화시킬 도전이나 문제를 마주침</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">소명 거부</div><div class=\"card-desc\">:두려움, 불안감 등으로 모험을 망설임</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">멘토와의 만남</div><div class=\"card-desc\">: 영웅을 이끌고 훈련시키는 현명한 조언자를 만남</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">첫 관문 통과</div><div class=\"card-desc\">: 일상 세계를 벗어나 모험의 세계로 진입</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">시련, 동맹, 적대자</div><div class=\"card-desc\">: 모험 속에서 시련을 겪고 동맹을 맺거나 적과 대립</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">가장 깊은 동굴 접근</div><div class=\"card-desc\">: 가장 위험한 장소, 즉 적의 본거지나 어려운 시험에 다가감</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">시련</div><div class=\"card-desc\">: 죽음과 같은 큰 시련에 직면하고 이를 극복함</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">보상</div><div class=\"card-desc\">: 시련을 극복하고 귀중한 보물이나 지식을 얻음</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">귀로</div><div class=\"card-desc\">: 모험의 시계를 떠나 일상 세계로 돌아가기 시작함</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">부활</div><div class=\"card-desc\">: 최종적이고 가장 위험한 시험을 겪고 다시 태어남</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">엘릭서의 귀환</div><div class=\"card-desc\">: 모험을 통해 얻은 지혜나 보물을 가지고 일상 세계로 돌아와 변화를 가져옴</div></div>",
+    "hasAudio": true,
+    "start": 557.0,
+    "end": 582.0
+  },
+  {
+    "id": "P23",
+    "title": "영웅의 여정 12단계 - 게임 적용",
+    "content": "<div class=\"slide-card\"><div class=\"card-heading\">일상세계</div><div class=\"card-desc\">: 주인공의 평범한 삶 → 평화로운 시작 마을</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">모험의 소명</div><div class=\"card-desc\">: 사건 발생, 목표 제시 → 국왕의 부름, 마을의 습격</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">소명 거부</div><div class=\"card-desc\">: 두려움으로 주저함 → “내가 어떻게 세상을 구해?” (주로 컷신)</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">스승과의 만남</div><div class=\"card-desc\">: 조력자로부터 도움/장비 획득 → 튜토리얼 NPC, 첫 무기 하사</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">첫 관문 통과</div><div class=\"card-desc\">: 본격적인 모험의 시작 → 시작 마을을 떠나 큰 대륙으로 이동</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">시련, 동맹, 적대자</div><div class=\"card-desc\">: 동료를 얻고 적과 조우 → 사이드 퀘스트 수행, 파티 구성</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">가장 깊은 동굴 접근</div><div class=\"card-desc\">: 최종 목표를 향한 관문 → 마지막 던전 진입, 중간 보스전</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">시련</div><div class=\"card-desc\">: 최대의 위기와 죽음의 고비 → 주인공의 패배 혹은 동료의 희생</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">보상</div><div class=\"card-desc\">: 시련 끝에 얻는 힘/진실 → 전설의 검 획득, 각성, 진실 확인</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">귀로</div><div class=\"card-desc\">: 남은 적들의 추격과 탈출 → 무너지는 성에서의 탈출, 최종 추격전</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">부활</div><div class=\"card-desc\">: 진정한 영웅으로 거듭남 → 최종 보스전 (성장의 증명)</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">엘릭서의 귀환</div><div class=\"card-desc\">: 변화된 세상을 맞이함 → 엔딩 크레딧, 평화를 찾은 세</div></div>",
+    "hasAudio": true,
+    "start": 557.0,
+    "end": 591.0
+  },
+  {
+    "id": "P24",
+    "title": "기본적인 캐릭터 구성",
+    "content": "<div class=\"slide-card\"><div class=\"card-heading\">심리적 차원</div><div class=\"card-desc\">: 도덕 기준, 목표, 욕구, 기질, 콤플렉스, 능력</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">사회적 차원</div><div class=\"card-desc\">: 계층, 종족, 직업, 사회적 성향, 가정 생활</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">생리적 차원</div><div class=\"card-desc\">: 이름, 성별, 나이, 신체조건, 용모, 결함이나 특이점, 유전</div></div>\n<div class=\"slide-text\">캐릭터를 설계할 때 이 세 가지 차원을 모두 고려하면 <strong>입체적이고 설득력 있는 캐릭터</strong>를 만들 수 있다.</div>",
+    "hasAudio": true,
+    "start": 591.0,
+    "end": 619.0
+  },
+  {
+    "id": "P25",
+    "title": "캐릭터와 스토리의 관계",
+    "content": "<div class=\"slide-text\">캐릭터는 자신에 걸맞는 이야기를 만들어 낸다.<br>캐릭터와 환경의 조합, 캐릭터와 캐릭터와의 조합에 따라 다양한 이야기가 나온다.<br>캐릭터의 의지는 이야기 전개의 중요한 요소이다.<br>게임 상에서 대부분의 플레이어 캐릭터는 거부하지 않는다.<br>종종 캐릭터는 스토리의 진행에 따라 변화(성장, 깨달음, 타락)한다.</div>",
+    "hasAudio": true,
+    "start": 619.0,
+    "end": 662.0
+  },
+  {
+    "id": "P26",
+    "title": "게임 스토리텔링 관점의 좋은 캐릭터",
+    "content": "<div class=\"slide-card\"><div class=\"card-heading\">특성의 과장</div><div class=\"card-desc\">: 특성이 현실보다 과장되게 표현되어야 한다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">갈등의 여지</div><div class=\"card-desc\">: 갈등이 발생할 여지가 있어야 한다. 완벽한 캐릭터보다 결점이 있는 캐릭터가 더 흥미롭다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">외적 표현</div><div class=\"card-desc\">: 특성은 외형, 행동, 대사 등 외적으로 표현되어야 한다. ‘보여주기’가 ‘말하기’보다 강력하다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">명확한 역할</div><div class=\"card-desc\">: 구조적으로 담당하는 역할이 명확해야 한다. 주인공, 조력자, 적대자 등의 역할이 분명해야 한다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">분명한 특성</div><div class=\"card-desc\">: 복합적이고 불분명한 캐릭터보다 명확하고 분명한 특성을 가진 캐릭터가 더 기억에 남는다.</div></div>",
+    "hasAudio": true,
+    "start": 591.0,
+    "end": 641.0
+  },
+  {
+    "id": "P27",
+    "title": "기본적인 인물 배치",
+    "content": "<div class=\"slide-card\"><div class=\"card-heading\">주인공</div><div class=\"card-desc\">게임을 이끌어가는 주인공. 주인공이 추구하고 동경하는 열망이나 목적을 유저들도 같이 공감할 수 있어야 한다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">적대자</div><div class=\"card-desc\">주인공의 목적이나 꿈을 저지시키기 위해 설정된 캐릭터. 강력한 적대자가 있어야 주인공이 빛난다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">제3자</div><div class=\"card-desc\">주인공과 적대자 중간의 존재. 갈등의 원인이 되기도 하지만 양자 간의 힘의 균형을 맞추기도 한다.</div></div>",
+    "hasAudio": false,
+    "start": null,
+    "end": null
+  },
+  {
+    "id": "P28",
+    "title": "세부 캐릭터 설정 / 주인공",
+    "content": "<div class=\"slide-card\"><div class=\"card-heading\">플레이어의 분신</div><div class=\"card-desc\">→ 플레이어가 감정 이입을 하기 쉽도록 만드는 것이 중요하다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">무개성 주인공</div><div class=\"card-desc\">: 감정 이입이 쉽도록 설정</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">매력적인 주인공</div><div class=\"card-desc\">: 감정 이입을 하고 싶어하는 캐릭터로 설정</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">커스터마이징</div><div class=\"card-desc\">: 플레이어가 직접 세부 설정</div></div>",
+    "hasAudio": true,
+    "start": 629.0,
+    "end": 683.0
+  },
+  {
+    "id": "P29",
+    "title": "세부 캐릭터 설정 / 공략 대상",
+    "content": "<div class=\"slide-text\">연애 시뮬레이터의 상대 이성, 액션 게임의 적, 탐정 게임의 범인 등이 해당된다.</div>\n<div class=\"slide-card\"><div class=\"card-heading\">난이도별 배치</div><div class=\"card-desc\">난이도에 따라 공략 대상의 배치가 중요하다. 쉬운 것부터 어려운 것까지 단계적으로 배치하라</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">집중의 원칙</div><div class=\"card-desc\">한 번에 여러 공략 대상이 겹치면 혼돈이 올 수 있다. 플레이어가 한 가지에 집중할 수 있도록 설계하라</div></div>",
+    "hasAudio": false,
+    "start": null,
+    "end": null
+  },
+  {
+    "id": "P30",
+    "title": "세부 캐릭터 설정 / 적 캐릭터",
+    "content": "<div class=\"slide-card\"><div class=\"card-heading\">악역 캐릭터</div><div class=\"card-desc\">절대적인 악. 스토리의 중심을 이끌어 가는 원동력이다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">적대 캐릭터</div><div class=\"card-desc\">주인공에게 적대하는 캐릭터. 변화의 여지가 있어 스토리를 풍성하게 만든다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">관문 캐릭터</div><div class=\"card-desc\">클리어하지 않으면 앞으로 나갈 수 없게 만드는 캐릭터. 관문 캐릭터를 중심으로 스토립의 챕터를 나눌 수 있다.</div></div>\n<div class=\"slide-note\"><div class=\"note-icon\">💡</div><div class=\"note-content\">게임 중간에 이탈하는 관문 캐릭터 등은 각성, 혈연관계, 부활 등의 장치로 재등장하거나 동료 캐릭터가 되는 형태로 종종 재사용된다.</div></div>",
+    "hasAudio": true,
+    "start": 828.0,
+    "end": 872.0
+  },
+  {
+    "id": "P31",
+    "title": "세부 캐릭터 설정 / 라이벌 캐릭터",
+    "content": "<div class=\"slide-card\"><div class=\"card-heading\">동일한 목적, 다른 방법</div></div>\n<div class=\"slide-text\">플레이어와 동일한목적을 가지고 대립하는 캐릭터이다. 플레이어에게 ‘지고 싶지 않다’는 심리를 불러일으키는 것이 중요하므로 종종 주인공보다 유리한 조건, 좋은 배경, 비열하거나 얍삽함 등의 특성을 지닌다.</div>\n<div class=\"slide-note\"><div class=\"note-icon\">💡</div><div class=\"note-content\">라이벌은 주인공의 성장을 촉진하는 거울 같은 존재다.</div></div>",
+    "hasAudio": false,
+    "start": null,
+    "end": null
+  },
+  {
+    "id": "P32",
+    "title": "세부 캐릭터 설정 / 파트너 캐릭터",
+    "content": "<div class=\"slide-text\">특별한 동료 캐릭터로, 대게 연애 대상 등으로 활용된다. 파트너 캐릭터에 대한 플레이어의 감정 이입 장치가 필요하다.</div>\n<div class=\"slide-card\"><div class=\"card-heading\">특별한 신분</div><div class=\"card-desc\">재벌의 자녀, 왕족, 아이돌 스타 등 특별한 배경을 가진 캐릭터</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">비밀의 공유</div><div class=\"card-desc\">주인공과 파트너 간의 비밀을 통해 특별한 유대감 형성</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">특별한 관계</div><div class=\"card-desc\">어릴 적 소꿉친구, 가족도 아닌데 한 집에 거주하는 등의 관계</div></div>\n<div class=\"slide-note\"><div class=\"note-icon\">💡</div><div class=\"note-content\">서로 반대의 성향을 가진 둘 이상의 파트너 캐릭터를 만드는 것도 좋다.</div></div>",
+    "hasAudio": true,
+    "start": 674.0,
+    "end": 721.0
+  },
+  {
+    "id": "P33",
+    "title": "세부 캐릭터 설정 / 동료 캐릭터",
+    "content": "<div class=\"slide-card\"><div class=\"card-heading\">내 편</div><div class=\"card-desc\">: 주인공의 목적 달성을 돕는다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">들어주는 역</div><div class=\"card-desc\">: 혼자 중얼거리는 것보다 누군가에게 말하는 형식이 훨씬 자연스럽다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">북돋워주는 역</div><div class=\"card-desc\">: 무개성이나 우유부단한 주인공에게 행동이나 결단을 하도록 유도한다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">동료 캐릭터의 활용</div><div class=\"card-desc\">: 희생시키기, 변신(Ex :  알고보니 현자, 배신자)</div></div>",
+    "hasAudio": false,
+    "start": null,
+    "end": null
+  },
+  {
+    "id": "P34",
+    "title": "들어주는 역의 활용",
+    "content": "<div class=\"slide-card\"><div class=\"card-heading\">Case 1</div><div class=\"card-desc\">: 혼자 중얼거리기</div></div>\n<div class=\"slide-def-card\"><div class=\"def-title\">주인공</div><div class=\"def-desc\">: “이, 이것은… 구한말 고종황제가 숨겨두었다는 금괴의 위치가 표시된 지도?”</div></div>\n<div class=\"slide-text\">→ 어색하고 부자연스러운 대사</div>\n<div class=\"slide-card\"><div class=\"card-heading\">Case 2</div><div class=\"card-desc\">: 대화를 통한 설명</div></div>\n<div class=\"slide-def-card\"><div class=\"def-title\">주인공</div><div class=\"def-desc\">: “이, 이것은…”<br><strong>친구</strong> : “ 뭐야? 비싼 거야?”<br><strong>주인공</strong> : “예전에 내가 했던 말 기억나?”<br><strong>친구</strong> : “고종 황제의 금괴 이야기?”<br><strong>주인공</strong> : (끄덕끄덕)<br><strong>친구</strong> : “그, 그렇다면 이게 혹시?”<br><strong>주인공</strong> : “그래. 이게 바로 금괴의 위치가 표시된 지도야.”</div></div>\n<div class=\"slide-text\">대사를 통해 정보를 전달하면 훨씬 자연스럽고 몰입감이 높아진다.</div>",
+    "hasAudio": false,
+    "start": null,
+    "end": null
+  },
+  {
+    "id": "P35",
+    "title": "세부 캐릭터 설정 / 가족 캐릭터",
+    "content": "<div class=\"slide-text\">가족에 대한 사회 통념을 이용하여 각종 동기 유발에 사용한다.</div>\n<div class=\"slide-quote\">그냥 적일 때의 다스 베이더와 주인공의 아버지라는 것이 밝혀진 후의 다스 베이더는 캐릭터의 성격이 완전히 다르다.</div>\n<div class=\"slide-note\"><div class=\"note-icon\">💡</div><div class=\"note-content\"><strong>가족 캐릭터 사용 시 주의점</strong><br>존재감을 계속 높여주지 않으면 점점 옅어진다. 반대로 존재감을 너무 높이다 보면 ‘또 가족이야? 식상해’ 라는 반응이 나올 수 있다.</div></div>",
+    "hasAudio": false,
+    "start": null,
+    "end": null
+  },
+  {
+    "id": "P36",
+    "title": "가족 캐릭터의 동기부여 수준",
+    "content": "<div class=\"slide-card\"><div class=\"card-heading\">Case 1</div><div class=\"card-desc\">: 가족과의 마지막 대화</div></div>\n<div class=\"slide-def-card\"><div class=\"def-title\">어머니</div><div class=\"def-desc\">: “일어났니?”<br><strong>나</strong>: “일어나셨어요?”<br><strong>어머니</strong>: “너 지퍼 열렸다.”<br><strong>나</strong>: “에, 거짓말 마요. 어디가 열렸다고.”</div></div>\n<div class=\"slide-text\">나는 이런 말을 남기고 집을 나섰다. 하지만 그것이 어머니와의 마지막 대화가 될 줄이야. 12월 21일, 아직 범인을 찾지 못했다.</div>\n<div class=\"slide-card\"><div class=\"card-heading\">Case 2</div><div class=\"card-desc\">: 동네사람들과의 마지막 대화</div></div>\n<div class=\"slide-def-card\"><div class=\"def-title\">동네사람</div><div class=\"def-desc\">: “어디가니?”<br><strong>나</strong>: “아 안녕하세요?”<br><strong>어머니</strong>: “너 지퍼 열렸다.”<br><strong>나</strong>: “에, 거짓말 마요. 어디가 열렸다고.”</div></div>\n<div class=\"slide-text\">나는 이런 말을 남기고 집을 나섰다. 하지만 그것이 동네사람과의 마지막 대화가 될 줄이야. 12월 21일, 아직 범인을 찾지 못했다.</div>\n<div class=\"slide-text\">똑같은 상황, 실없는 대사지만 1과 2 사이의 동기 부여 정도는 확연히 차이가 난다. 가족이라는 관계가 주는 감정적 무게는 다르다.</div>",
+    "hasAudio": false,
+    "start": null,
+    "end": null
+  },
+  {
+    "id": "P37",
+    "title": "세부 캐릭터 설정 / 전환자",
+    "content": "<div class=\"slide-card\"><div class=\"card-heading\">계기 캐릭터</div><div class=\"card-desc\">스토리의 흐름에 변화를 주는 역할을 한다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">도우미 캐릭터</div><div class=\"card-desc\">목적 달성이 지지부진할 때 스토리를 앞으로 나아가게 하는 역할을 한다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">배신자 캐릭터</div><div class=\"card-desc\">자기편을 배신해 스토리의 전환을 불러일으키는 역할을 한다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">현자 캐릭터</div><div class=\"card-desc\">스토리에 무게와 설득력을 주고 주인공을 발전시키는 역할을 한다.</div></div>",
+    "hasAudio": false,
+    "start": null,
+    "end": null
+  },
+  {
+    "id": "P38",
+    "title": "세부 캐릭터 설정 / 보강자",
+    "content": "<div class=\"slide-card\"><div class=\"card-heading\">휴식 캐릭터</div><div class=\"card-desc\">스토리의 심각한 분위기를 환기시켜주는 역할을 한다. 코믹 릴리프로도 불린다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">간섭 캐릭터</div><div class=\"card-desc\">스토리에 대한 부연 설명이나 당위성을 이끌어내는 캐릭터이다. 질문을 던져 자연스러운 설명을 유도한다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">동물 캐릭터</div><div class=\"card-desc\">선악을 구분해 주거나 복선을 부여하는 존재. 첫 만남 등 친밀감이 낮은 경우에는 적대 요소로도 활용. 애완의 요소가 강조될 경우 휴식 캐릭터로도 활용된다.</div></div>",
+    "hasAudio": false,
+    "start": null,
+    "end": null
+  },
+  {
+    "id": "P39",
+    "title": "간섭 캐릭터의 활용 예시",
+    "content": "<div class=\"slide-card\"><div class=\"card-heading\">Case 1</div><div class=\"card-desc\">: 간섭 없는 대화</div></div>\n<div class=\"slide-def-card\"><div class=\"def-title\">주인공</div><div class=\"def-desc\">: “경찰관님, 제가 범인을 잡았습니다!”<br><strong>경찰</strong>: “아, 네 감사합니다.”<br><strong>주인공</strong>: “네 그럼 수고하세요.”</div></div>\n<div class=\"slide-text\">→ 정보 전달이 부족하고 밋밋하다.</div>\n<div class=\"slide-card\"><div class=\"card-heading\">Case 2</div><div class=\"card-desc\">: 간섭을 통한 정보 전달</div></div>\n<div class=\"slide-def-card\"><div class=\"def-title\">주인공</div><div class=\"def-desc\">: “경찰관님, 제가 범인을 잡았습니다!”<br><strong>경찰</strong>: “무슨 이유로 이 사람을 범인이라고 하는 겁니까?”<br><strong>주인공</strong>: “여자의 지갑을 훔치는 현장을 제가 직접 봤습니다.”<br><strong>경찰</strong>: “그렇군요. 그나ㅓ나 당신이 어떻게 이런 덩치 큰 남자를?”<br><strong>주인공</strong>: “사실 저희 아버지가 권투 선수라 어깨 너머로 배웠습니다.”</div></div>\n<div class=\"slide-text\">→ 간섭을 통해 상황 설명과 주인공에 대한 정보를 자연스럽게 전달한다.</div>",
+    "hasAudio": false,
+    "start": null,
+    "end": null
+  },
+  {
+    "id": "P40",
+    "title": "세부 캐릭터 설정 / 시스템 캐릭터",
+    "content": "<div class=\"slide-text\">Save/Load를 담당하거나, 물건을 팔거나, 게임에 대한 설명을 하는 등 게임 시스템과 연결된 캐릭터이다.</div>\n<div class=\"slide-card\"><div class=\"card-heading\">일반적인 설계</div><div class=\"card-desc\">대개는 무개성으로 설계하며, 스토리에 깊이 관여하지 않는 캐릭터로 설정한다.</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">드라마틱한 활용</div><div class=\"card-desc\">가끔 스토리 내의 삽입으로 드라마틱한 전개를 보여주는 장치로 사용된다. 예를 들어, 세이브/로드용 캐릭터가 사실은 자신을 감시하던 대마왕의 심복이라는 반전 등</div></div>",
+    "hasAudio": false,
+    "start": null,
+    "end": null
+  }
+];
+const TRANSCRIPT = [{"start": 0.0, "end": 8.58, "text": "청취자 여러분 지금까지 게임을 하시면서 가장 강렬하게 감정을 쏟아 부었던 순간을 한번 떠올려 보시겠어요?"}, {"start": 8.58, "end": 19.18, "text": "막 패드를 꽉 쥐고 손에 땀을 쥐며 분노했던 순간이나 엔딩 크레딧이 올라갈 때 형은 할 수 없는 벅찬 감동을 느꼈던 그 순간들 말입니다."}, {"start": 19.18, "end": 34.38, "text": "근데 만약 제가 여러분이 느꼈던 그 뜨거운 감정들이 사실 롤러 코스터의 레이를 설계하는 것과 똑같은 수학적이고 심리적인 공식에 의해 완벽하게 조종당한 결과라고 말씀드린다면 어떨까요?"}, {"start": 34.38, "end": 50.02, "text": "환영합니다. 오늘의 심층 탐구에서는 그저 겉 포장지에 불과한 줄거리가 아니라 기획자들이 플레이어의 심장박동을 쥐락펴락하고 시스템의 톱니바퀴를 맞물리게 하는 핵심 설계 방법론의 비밀을 파헤쳐 보려 합니다."}, {"start": 50.02, "end": 56.84, "text": "저는 수많은 게임의 엔딩을 보았지만 늘 그 이면의 원리가 궁금했던 배움을 즐기는 학생이고요."}, {"start": 56.84, "end": 63.28, "text": "제 곁에는 현업에서 10년 넘게 플레이어들의 마음을 훔쳐 오신 게임기획 전문가 모셨습니다."}, {"start": 63.28, "end": 70.7, "text": "네 반갑습니다. 현업의 경험을 바탕으로 오늘 여러분과 호스트님의 시야를 완전히 뜯어고쳐드릴 기획자입니다."}, {"start": 70.7, "end": 85.74000000000001, "text": "오늘 다룰 내용은 단순히 게임 개발자들만을 위한 기술서가 아니거든요. 어떻게 하면 사람의 마음을 움직이고 특정 세계에 완벽하게 몰입하게 만들 수 있는지 그 심리적이고 구조적인 메커니즘을 분석하는 아주 매력적인 여정이 될 겁니다."}, {"start": 85.74, "end": 94.56, "text": "네 오늘 대화를 통해서 청취자 여러분도 무언가의 사람을 푹 빠지게 만드는 그 은밀한 기술들을 확실하게 얻어 가실 수 있을 겁니다."}, {"start": 94.56, "end": 104.53999999999999, "text": "그럼 가장 근본적인 고정관형부터 깨부수고 시작해 보죠. 보통 게임 시나리오라고 하면 까만 화면에 하얀 글씨로 방대한 텍스트가 쫙 올라가는 걸 떠올리잖아요."}, {"start": 104.53999999999999, "end": 113.5, "text": "바로 그 지점부터 바로 잡아야 하는데요. 게임 시나리오는 스토리를 감싸는 포장지가 아니라 유저의 행동에 강력한 동기를 부여하는 핵심 엔진입니다."}, {"start": 113.5, "end": 126.06, "text": "어 포장지가 아니라 엔진이라는 게 정확히 무슨 뜻이에요? 세계관이나 배경 이야기를 그럴듯하게 글로 잘 써서 게임을 예쁘게 포장하는 게 역할 아닌가요?"}, {"start": 126.06, "end": 135.66, "text": "텍스트로 세계관을 읊어주는 게 아니라 유저가 방사능 수치를 관리하며 돌연변이를 피해 숨죽여 깡통을 줍게 만드는 생존 시스템 그 자체가 진짜 시나리오라는 겁니다."}, {"start": 135.66, "end": 147.98, "text": "아 글을 읽는 게 아니라 생존을 위한 플레이 자체로 스토리를 느낀다는 거네요? 그럼 유저가 텍스트 없이 스토리를 느끼게 하려면 기획자는 어떤 방식을 1순위로 두는 건가요?"}, {"start": 147.98, "end": 154.85999999999999, "text": "시나리오 표현의 1순위는 언제나 게임 플레이 그 자체고 2순위가 시각적 연출 그리고 텍스트는 가장 마지막 3순위입니다."}, {"start": 154.85999999999999, "end": 160.62, "text": "텍스트가 꼴찌라고요? 아니 글이 없는데 유저가 기획자의 의도를 어떻게 알아채요?"}, {"start": 160.62, "end": 170.62, "text": "동그란 고수를 굴리는 아주 단순한 게임에서 구슬 뒤쪽 바닥이 초당 1m씩 무너져 내리게 만들면 텍스트 한 줄 없어도 유저는 엄청난 긴장감과 서사를 느끼게 됩니다."}, {"start": 170.62, "end": 183.66, "text": "와 무너지는 바닥을 피하는 그 컨트롤 경암 자체가 서사가 되는 거군요. 그럼 유저를 이렇게 몰입시키기 위해서 평범하고 기계적인 게임 시스템들도 전부 이런 시나리오에 영향을 받게 되는 건가요?"}, {"start": 183.66, "end": 191.42, "text": "네 모든 기계적 시스템에 개연성을 부여해서 플레이어가 완벽하게 동화되는 미미크리를 극대화하는 게 몰입의 궁극적 목적입니다."}, {"start": 191.42, "end": 197.34, "text": "코딩된 기계적 규칙에 개연성을 부여한다는 게 뭐랄까 정확히 무슨 말이죠?"}, {"start": 197.34, "end": 207.82, "text": "체력이 열리되면 죽는 단순한 시스템을 주인공의 몸을 차지하려는 악령의 저주가 100% 잠식했다고 설정하면 유저는 단순한 게임 오버가 아니라 비극적인 스토리로 받아들이게 되죠."}, {"start": 207.82, "end": 213.42, "text": "와 똑같은 체력 게이지인데 악령의 저주라니 느낌이 완전 다르네요."}, {"start": 213.42, "end": 222.7, "text": "그럼 이렇게 유저가 세계관에 푹 빠질 준비가 끝났다면 이제 본격적으로 이야기를 굴러가게 만들 엔진이 필요할 텐데 그건 어떻게 만드나요?"}, {"start": 222.7, "end": 227.17999999999998, "text": "스토리를 전진시키는 유일하고 가장 강력한 엔진은 바로 갈등입니다."}, {"start": 227.17999999999998, "end": 233.98, "text": "갈등이 엔진이라는 게 정확히 어떤 원리로 작동하는 거예요? 그냥 평화롭게 마을 돌아다니면 안 되나요?"}, {"start": 233.98, "end": 245.1, "text": "평화로운 농손마을에 잔혹한 대마왕의 군대가 쳐들어와 불을 지르는 외부적 갈등이 발생해야만 플레이어는 복수하기 위해 마을 밖으로 뛰쳐나가 모험을 시작하거든요."}, {"start": 245.1, "end": 249.57999999999998, "text": "아 갈등을 던져줘서 스스로 뛰쳐나가게 만드는 거군요."}, {"start": 249.57999999999998, "end": 258.21999999999997, "text": "근데 가끔 게임하다 보면 주인공이 너무 답답해서 오히려 화가 날 때가 있거든요. 이건 기획자가 갈등 설계를 잘못한 건가요?"}, {"start": 258.3, "end": 269.18, "text": "맞습니다. 갈등과 공에 실패하면 이야기 전개를 꽉 막아버리는 고여있는 갈등이나 유저의 감정선을 다 끊어버리는 튀는 갈등이 되어 게임을 망치게 됩니다."}, {"start": 269.18, "end": 275.1, "text": "고여있거나 튀는 갈등이요? 그게 정확히 어떤 식으로 유저한테 최악의 경험을 주나요?"}, {"start": 275.1, "end": 282.22, "text": "대마왕이 쳐들어왔는데 겁쟁이 주인공이 10시간 내내 방구석에서 징징거리니만 하면 고여있는 갈등이고,"}, {"start": 282.22, "end": 287.66, "text": "친구가 응원 한번 해줬다고 갑자기 칼 뽑고 대마왕 목 치러 가면 튀는 갈등인 거죠."}, {"start": 287.66, "end": 295.1, "text": "아우 진짜 최악이네요. 패드 던져버릴 것 같아요. 납득할 만한 이유가 있어야 주인공이 움직인다는 거군요."}, {"start": 295.1, "end": 301.66, "text": "그럼 반대로 물리쳐야 할 악당은 어때요? 그냥 순수하게 100% 나쁜 놈이면 되는 거 아닌가요?"}, {"start": 301.66, "end": 309.58000000000004, "text": "현대의 세련된 게임 시나리오에서는 악역에게조차 합당하고 이성적인 동기를 부여해야만 이야기의 깊이가 생겨납니다."}, {"start": 309.58000000000004, "end": 315.82000000000005, "text": "악당한테 합리적인 동기를 준다고요? 왜 굳이 못된 악당한테까지 감정이입을 하게 만들죠?"}, {"start": 315.9, "end": 319.02, "text": "속시원하게 때려잡는 게 스트레스도 풀리고 낫지 않나요?"}, {"start": 319.02, "end": 327.02, "text": "만약 대마왕이 지구를 침공하는 이유가 수명이 다해 멸어망에 가는 자기 고향 행성 주민들을 이주시킬 유일한 생존책이었다면"}, {"start": 327.02, "end": 331.65999999999997, "text": "유저는 선과 선이 충돌하는 엄청난 도덕적 딜레마를 겪게 되거든요."}, {"start": 331.65999999999997, "end": 337.26, "text": "와 대박. 악당 사연이 합리적일수록 유저가 딜레마에 빠지는 거네요."}, {"start": 337.26, "end": 342.06, "text": "그럼 이렇게 갈등과 사연이라는 강력한 에너지를 만들었는데"}, {"start": 342.06, "end": 349.66, "text": "이게 목적지까지 엉뚱한대로 안 튀고 제대로 흘러가게 하려면 설계도가 필요할 텐데 그게 플롯인가요?"}, {"start": 349.66, "end": 360.54, "text": "네. 기획의 뼈대를 세울 때 명심해야 할 것은 단순히 사건을 나열하는 스토리와 사건들 사이에 철저한 인과관계를 부여하는 플롯은 완전히 다르다는 겁니다."}, {"start": 360.54, "end": 364.7, "text": "스토리랑 플롯이 다르다고요? 둘의 차이가 정확히 뭐예요?"}, {"start": 364.7, "end": 368.62, "text": "왕이 죽고 왕비가 죽었다는 건 단순한 스토리지만"}, {"start": 368.62, "end": 374.94, "text": "왕이 죽자 그 슬픔에 겨워 왕비가 죽었다고 원인과 결과의 백왕망으로 연결하는 것이 바로 플롯입니다."}, {"start": 374.94, "end": 379.74, "text": "아. 원인과 결과라는 튼튼한 파이프로 사건들을 껴아내는 거군요."}, {"start": 379.74, "end": 385.82, "text": "근데 게임은 제가 마음대로 움직일 수 있는데 이 플롯 두 조가 다 똑같을 순 없지 않나요?"}, {"start": 385.82, "end": 395.42, "text": "그래서 게임 플롯은 유저의 자유도에 따라 선형적 플롯, 분기형 플롯 그리고 유저가 직접 이야기를 만들어내는 창발적 플롯으로 나뉩니다."}, {"start": 395.5, "end": 398.86, "text": "선택에 따라 이야기가 나뉘는 분기형 플롯이요."}, {"start": 398.86, "end": 403.02000000000004, "text": "이야기가 계속 쪼개지면 기획자 입장에서 그걸 다 어떻게 감당하죠?"}, {"start": 403.02000000000004, "end": 411.26, "text": "튜토리얼 마을에서 만난 농부를 살려주느냐 마느냐 하는 작은 선택이 수십 시간 뒤 국가 간 전쟁 결과를 바꿔버리는 식으로"}, {"start": 411.26, "end": 416.38, "text": "기획자는 선택이 갈라질 때마다 수십 개의 새로운 파이프라인을 전부 설계해야 하죠."}, {"start": 416.38, "end": 422.38, "text": "세상에 제가 무심코 두른 선택지 하나 때문에 기획자들이 밤을 세우는 거였군요."}, {"start": 422.38, "end": 428.94, "text": "그럼 반대로 자유도가 아예 없는 일직선 게임은 유저가 지루해서 안 끌게 어떻게 계속 붙잡아 두나요?"}, {"start": 428.94, "end": 439.34, "text": "그럴 때 사용하는 핵심 기술이 초반에 보여준 의미심장한 요소는 후반에 반드시 의미있게 사용된다는 최어프의 총이라는 복선회수 원칙입니다."}, {"start": 439.34, "end": 445.5, "text": "체호프의 총이요? 그게 일직선 게임에서 안 지루하게 붙잡아 두는 거랑 정확히 무슨 상관이에요?"}, {"start": 445.58, "end": 457.1, "text": "초반에 절대 열 수 없는 기괴한 문양의 문을 보여주고 궁금증을 심은 뒤 수십 시간 뒤 최종 보스전 직전에 마침내 그 열쇠를 얻게 해서 깔아둔 복선을 시원하게 터뜨려 주는 거죠."}, {"start": 457.1, "end": 462.7, "text": "아하, 길목 곳곳에 떡밥을 흘려두고 정확한 타이밍에 터뜨리는 거네요?"}, {"start": 462.7, "end": 469.1, "text": "그럼 유저가 처음 여정에 발을 들이자마자 확 몰입하게 만들려면 초반에는 어떤 기술을 쓰나요?"}, {"start": 469.1, "end": 477.18, "text": "기획자들은 게임 시작된 5분 안에 유저의 시선을 완벽하게 사로잡고 이 세계에 묶어버리는 훅이라는 강력한 사건을 배치합니다."}, {"start": 477.18, "end": 484.70000000000005, "text": "5분 만에 낚싯바늘을 꽂는다고요? 도대체 오프닝을 어떻게 짜야 5분 만에 유저가 뼈를 묻겠다고 결심하죠?"}, {"start": 484.70000000000005, "end": 496.3, "text": "평화로운 마을에서 사랑스러운 딸이랑 조작법을 배우고 있었는데 정확히 5분 뒤에 괴물들이 들이닥쳐 딸이 끔찍하게 목숨을 잃게 만들면 유저에게는 끝까지 복수해야 할 압도적인 동기가 생겨버리죠."}, {"start": 496.38, "end": 502.22, "text": "와 5분 만에 제 심장을 찢어놓고 복수심을 불태우는 거네요. 진짜 맵다 매워."}, {"start": 502.22, "end": 508.22, "text": "근데 계속 이렇게 피 튀기고 강력한 감정만 터지면 제가 너무 피곤해서 패드를 내려놓지 않을까요?"}, {"start": 508.22, "end": 514.62, "text": "바로 그 지점에서 기획자는 유저가 지쳐서 이탈하지 않도록 긴장과 이완의 리듬을 조절하는 페이싱 기술을 사용합니다."}, {"start": 514.62, "end": 520.94, "text": "긴장과 이완을 조절한다고요? 그게 기획자가 제 스트레스 수치를 막 DJ처럼 믹싱한다는 건가요?"}, {"start": 520.94, "end": 530.86, "text": "네 숨 막히는 보스전이 끝나면 곧바로 아름다운 풍경을 보며 재정비할 수 있는 안전지대를 패치해서 심장박동을 파도처럼 부드럽게 넘실거리게 조절하는 겁니다."}, {"start": 530.86, "end": 541.4200000000001, "text": "진짜 심장박동을 쥐락펴락 하네요. 막 터뜨렸다가 풀어주고. 그럼 기획자들이 언제 긴장시키고 언제 쉬게 할지 정하는 무슨 절대적인 마스터 공식 같은 게 있나요?"}, {"start": 541.4200000000001, "end": 549.4200000000001, "text": "그 완벽한 심박수 조절의 마스터 공식이 바로 신화학자 조셉 캠벨의 이론을 바탕으로 한 영웅의 여정 12단계라는 심리적 프레임워크입니다."}, {"start": 549.42, "end": 557.8199999999999, "text": "고대신화 문학 이론을 현대게임에 대입해서 제 심리를 조종한다고요? 그 옛날 공식이 게임 시스템이랑 맞아떨어져요?"}, {"start": 557.8199999999999, "end": 573.5799999999999, "text": "튜토리얼 NPC에게 첫 나무검을 받는 스승과의 만남 단계부터 마지막 던전에 진입하는 가장 깊은 동굴 접균단계 그리고 최종 보스전인 부활 단계까지 기획자의 시스템과 완벽하게 일치합니다."}, {"start": 573.58, "end": 582.5400000000001, "text": "와 세계관이라는 무대, 플로치라는 배관망, 그리고 제 심리를 통지할 영웅의 여정까지 전부 꽤 맞춰졌네요."}, {"start": 582.5400000000001, "end": 591.26, "text": "근데 이 기계가 돌아가려면 무대 위에서 저랑 상호작용할 배우들이 필요하잖아요. 기획자들은 이 캐릭터들을 도대체 어떻게 설계하는 건가요?"}, {"start": 591.26, "end": 598.5, "text": "캐릭터는 일부러 완벽하지 않은 결함을 부여해서 갈등을 만들어내고 입체적으로 설계하는 게 핵심입니다."}, {"start": 598.5, "end": 608.42, "text": "캐릭터한테 일부러 결함을 준다고요? 제가 조종할 주인공이나 동료는 완전 멋지고 완벽한 영웅이어야 하는 거 아닌가요? 왜 흠집을 내요?"}, {"start": 608.42, "end": 619.94, "text": "엄청난 신체적 능력이 있지만 과거 상처로 심각한 대인기 피증을 가진 캐릭터라면 그 결함 때문에 끊임없이 타인과 마찰을 빚으며 흥미신진한 에피소드를 만들어내거든요."}, {"start": 619.94, "end": 629.74, "text": "아, 흠집이 있어야 세상이랑 부딪히면서 스파크가 튀는 거군요. 그럼 제가 직접 조종하는 주인공 캐릭터도 그렇게 확고한 성격과 결함을 가져야 하나요?"}, {"start": 629.74, "end": 641.86, "text": "저는 좀 부담스럽던데요. 그래서 기획자들은 플레이어가 주인공에게 완벽하게 투영할 수 있도록 주인공을 뚜렷한 개성이 없는 백지상태로 설정하는 고도의 전략을 사용합니다."}, {"start": 641.86, "end": 649.1800000000001, "text": "개성이 없는 백지상태요. 매력 타져야 할 주인공을 일부러 심심하고 텅 빈 캐릭터로 만드는 진짜 이유가 뭐죠?"}, {"start": 649.1800000000001, "end": 662.98, "text": "길가에 쓰러진 NPC를 보고 유저는 귀찮아서 지나치고 싶은데 주인공이 혼자 멋대로 내가 돕겠어 해버리면 몰입이 와장창 깨지니까 백지처럼 빌어둬야 유저의 진짜 감정을 채워넣을 수 있는 겁니다."}, {"start": 662.98, "end": 674.46, "text": "제가 직접 감정을 칠할 수 있게 도화지를 비워둔 거군요. 근데 주인공이 벙어리 백지 상태면 스토리 진행할 때 너무 어색할 것 같은데 그걸 어떻게 해결하죠?"}, {"start": 674.46, "end": 683.7, "text": "그 어색함을 없애기 위해 주인공 옆에 찰싹 붙여놓는 최고의 장치가 바로 들어주는 역을 수행하는 동료 캐릭터입니다."}, {"start": 683.7, "end": 693.58, "text": "들어주는 역이요? 동료는 전투할 때 뒤에서 활 써주는 게 메인 아닌가요? 동료가 스토리를 전달한다는 게 무슨 말씀이신지 이해가 잘 안 가요."}, {"start": 693.58, "end": 711.4200000000001, "text": "주인공 혼자 전설의 금괴지도를 줍고 이것은 금괴지도. 중얼거리면 유치하잖아요. 그때 옆에서 동료가 헐 여관 주인이 말한 그 금괴지도 아냐 라고 호들갑을 떨어 주면 유저한테 아주 자연스럽게 세계관 정보가 전달되죠."}, {"start": 711.42, "end": 721.42, "text": "와 미쳤다. 저는 그냥 그 친구랑 티키타카 수다 떠날 줄 알았는데 그게 저한테 자연스럽게 설명해 주려고 설계해 둔 스피커였군요."}, {"start": 721.42, "end": 727.86, "text": "소름돋네요. 그럼 이렇게 맞장구쳐 주는 거 말고 다른 방식으로 주인공을 띄워주는 캐릭터도 있나요?"}, {"start": 727.86, "end": 739.54, "text": "물론이죠. 평범한 상황에 갑자기 훅 치고 들어와서 주인공의 숨겨진 배경이나 능력을 유저에게 자연스럽게 어필하게 만들어 주는 간섭 캐릭터가 있습니다."}, {"start": 739.54, "end": 747.54, "text": "간섭 캐릭터요? 제가 조종하는데 제 배경을 왜 다른 캐릭터가 간섭해서 드러내요? 그냥 프로필에 적어두면 되는 거 아니에요?"}, {"start": 747.54, "end": 759.14, "text": "소매치기를 잡고 끝났을 때 경찰 NPC가 다가와서 폼이 일반인이 아닌데 어떻게 한방에 기절시켰어 라고 물어봐 주면 사실 저희 아버지가 권투선수여서요."}, {"start": 759.14, "end": 764.4599999999999, "text": "라며 슬픈 가족사와 무술고수라는 설정을 우아하게 전달할 수 있거든요."}, {"start": 764.46, "end": 771.86, "text": "진짜 미쳤네요. 무심코 스쳐 지나간 엑스트라 경찰 질문 하나조차 철저하게 계상된 거였군요."}, {"start": 771.86, "end": 778.38, "text": "그럼 이런 식으로 기획자가 상황을 세팅할 때 유저가 느끼는 감정의 무게 자체를 뻥튀기 시킬 수도 있나요?"}, {"start": 778.38, "end": 790.3000000000001, "text": "아주 예리하십니다. 기획자는 퀘스트 내용은 하나도 안 바꾸고, 얽혀있는 캐릭터의 사회적 관계를 조작하는 것만으로 유저의 동기부여를 수백 배 증폭시킬 수 있습니다."}, {"start": 790.3, "end": 798.06, "text": "퀘스트는 완전 똑같은데 관련자만 바꾼다고 제 동기부여가 그렇게 뛴다구요? 어떤 차이가 있다는 거죠?"}, {"start": 798.06, "end": 807.74, "text": "나한테 싫어하는 농담을 하던 동네 아저씨가 납치됐을 때는 기계적으로 구하러 가지만 그게 오늘 아침 나한테 농담을 건네던 내 어머니로 바뀌는 순간"}, {"start": 807.74, "end": 813.3399999999999, "text": "무술을 써서라도 세상을 불태워서라도 구하겠다는 압도적인 분모와 동기가 생기죠."}, {"start": 813.34, "end": 822.38, "text": "헉 어머니면 진짜 피가 거꾸로 썼는데요? 폴리건 덩어리일 뿐인데 제가 완전히 들렸다 놨다, 농락 당하고 있었네요."}, {"start": 822.38, "end": 828.22, "text": "그럼 반대로 기획자가 이 관계를 이용해서 제 뒤통수로 완전 세게 칠 수도 있나요?"}, {"start": 828.22, "end": 839.02, "text": "그게 바로 캐릭터 기획의 하이라이트인 유저가 기능적으로 완전히 신뢰하고 위존하던 캐릭터를 끔찍한 서사적 위협으로 돌변시키는 시스템 캐릭터의 반전입니다."}, {"start": 839.02, "end": 844.9399999999999, "text": "제가 완전히 신뢰하던 캐릭터예요. 마을에서 물약 파는 상인 같은 애들이 어떻게 위협이 되죠?"}, {"start": 844.9399999999999, "end": 856.9399999999999, "text": "50시간 내내 나한테 물약은 팔던 안전한 상인 NPC가 마침내 최종 보스방에 들어갔더니 그 대마왕 본인이었다면 시스템의 안전함이라는 믿음 자체가 완전히 박살나버리거든요."}, {"start": 856.9399999999999, "end": 865.66, "text": "으악 진짜 소름돋아요. 내가 50시간 동안 대마왕한테 돈 바치고 등 보고 있었어. 배신자 캐릭터랑은 차원이 다른 충격이네요."}, {"start": 865.66, "end": 872.3, "text": "아 이제 완전히 깨달았습니다. 게임 기획은 그냥 방구석에서 글 쓰는 게 아니라 거대한 건축이네요."}, {"start": 872.3, "end": 873.3, "text": "맞습니다."}, {"start": 873.3, "end": 884.54, "text": "플레이라는 뼈대 위에 갈등이랑 인과관계 파이프 깔고, 영웅의 여정으로 공간 나누고, 제 심장을 찌를 조작된 캐릭터들을 배치해서 저를 그 안에 가둬버리는 거군요."}, {"start": 884.54, "end": 891.18, "text": "완벽한 요약입니다. 호스트님이 이 거대한 심리적 건축물의 도면을 드디어 깨뜨러 보셨네요."}, {"start": 891.18, "end": 903.2199999999999, "text": "와 오늘 밤엔 진짜 평소처럼 뇌빼고 게임 못할 것 같아요. 몬스터 때려 잡는 그 순간에도 제 감정이 전부 기획자들 손바닥 위에서 춤추고 있었다는 걸 알아버렸으니까요."}, {"start": 903.2199999999999, "end": 909.26, "text": "그래서 마지막으로 청취자 여러분께 조금 도발적인 화두를 하나 던지며 마무리하고 싶습니다."}, {"start": 909.26, "end": 920.78, "text": "오늘 밤 게임을 켜거나 영화를 보실 때 겉잡을 수 없는 분노, 나 강렬한 슬픈, 벅찬 성취감이 밀려온다면 잠시 멈추고 스스로에게 질문해 보십시오."}, {"start": 920.78, "end": 926.3, "text": "지금 여러분이 가슴 터질 듯 느끼는 이 뜨거운 감정은 정말 순수한 여러분의 것일까요?"}, {"start": 926.3, "end": 934.6999999999999, "text": "아니면 튜토리얼부터 동행한 들어주는 역의 동료와 합리적인 동기를 가진 악당에 의해 아주 치밀하고 정교하게 조종당한 결과일까요?"}, {"start": 934.6999999999999, "end": 944.5799999999999, "text": "마지막 질문 완전 매트릭스 빨간 약 먹은 기분이잖아요. 지금 제가 느끼는 이 소름돋는 감정조차 조종당한 것 같아서 무서워집니다."}, {"start": 944.58, "end": 952.82, "text": "근데 뭐 조종당하는 걸 알면서도 그 치밀한 톱니바퀴에서 기꺼이 소가 넘어가며 노는 게 또 우리 게이머들의 낭만 아니겠습니까?"}, {"start": 952.82, "end": 962.4200000000001, "text": "오늘의 심칭 탐구는 여기까지입니다. 여러분의 세상을 보는 해상도가 오늘부로 수직 상승하셨기를 바랍니다. 함께 해 주셔서 감사합니다."}];
+
+let currentSlide = 0;
+let isAutoSync = true;
+let lastSubIdx = -1;
+const audio = document.getElementById('audio');
+const playBtn = document.getElementById('play-btn');
+const timeDisplay = document.getElementById('time-display');
+const seekBar = document.getElementById('seek-bar');
+
+// 오디오 포함 슬라이드를 시작시간 순으로 정렬한 인덱스 (동기화용)
+const audioSlides = SLIDES
+    .map((s, i) => ({idx: i, start: s.start, end: s.end, hasAudio: s.hasAudio}))
+    .filter(s => s.hasAudio && s.start !== null)
+    .sort((a, b) => a.start - b.start);
+
+function init() {
+    buildNav();
+    buildIndex();
+    buildAudioMap();
+    showSlide(0);
+    audio.addEventListener('timeupdate', onTimeUpdate);
+    // 오디오 메타데이터 로드 시 시크바 max 갱신
+    audio.addEventListener('loadedmetadata', updateSeekBarMax);
+    audio.addEventListener('durationchange', updateSeekBarMax);
+    // canplay 이벤트도 대비 (일부 브라우저/포맷에서 loadedmetadata가 늦게 발생)
+    audio.addEventListener('canplay', updateSeekBarMax);
+    // 슬라이더 드래그 시: 오디오 위치 이동 + 즉시 슬라이드 동기화
+    seekBar.addEventListener('input', () => {
+        audio.currentTime = seekBar.value;
+        isAutoSync = true;
+        syncSlideToTime(audio.currentTime);
+        updateSubtitle(audio.currentTime);
+    });
+    // 일시정지 상태에서 seek 완료 시에도 슬라이드 동기화
+    audio.addEventListener('seeked', () => {
+        syncSlideToTime(audio.currentTime);
+        updateTimeDisplay();
+        updateSubtitle(audio.currentTime);
+    });
+}
+
+function updateSeekBarMax() {
+    if (audio.duration && isFinite(audio.duration)) {
+        seekBar.max = audio.duration;
+        updateTimeDisplay();
+    }
+}
+
+function buildNav() {
+    const nav = document.getElementById('slide-nav');
+    SLIDES.forEach((slide, i) => {
+        const dot = document.createElement('button');
+        dot.className = 'nav-dot ' + (slide.hasAudio ? 'has-audio' : 'no-audio');
+        dot.textContent = slide.id.replace('P', '');
+        dot.title = slide.id + ' — ' + slide.title;
+        dot.onclick = () => { isAutoSync = false; showSlide(i); };
+        nav.appendChild(dot);
+    });
+}
+
+function buildIndex() {
+    const list = document.getElementById('index-list');
+    SLIDES.forEach((slide, i) => {
+        const item = document.createElement('div');
+        item.className = 'index-item' + (slide.hasAudio ? ' has-audio' : '');
+        item.innerHTML = '<span class="idx-id">' + slide.id + '</span><span class="idx-title">' + slide.title + '</span>';
+        item.onclick = () => { isAutoSync = false; showSlide(i); };
+        list.appendChild(item);
+    });
+}
+
+function buildAudioMap() {
+    const map = document.getElementById('audio-map');
+    if (!map) return;
+    // 오디오 전체 길이: audioSlides의 마지막 end 또는 audio.duration
+    const totalDur = audioSlides.length > 0
+        ? Math.max(...audioSlides.map(s => s.end || 0))
+        : 1;
+    audioSlides.forEach((s, i) => {
+        const slide = SLIDES[s.idx];
+        const left = (s.start / totalDur) * 100;
+        const width = ((s.end - s.start) / totalDur) * 100;
+        const seg = document.createElement('div');
+        seg.className = 'map-segment';
+        seg.dataset.idx = s.idx;
+        seg.style.left = left + '%';
+        seg.style.width = width + '%';
+        seg.textContent = slide.id;
+        seg.title = slide.id + ' — ' + slide.title;
+        seg.onclick = () => {
+            audio.currentTime = s.start;
+            isAutoSync = true;
+            syncSlideToTime(s.start);
+        };
+        map.appendChild(seg);
+    });
+}
+
+function updateAudioMap(currentIdx) {
+    document.querySelectorAll('.map-segment').forEach(seg => {
+        seg.classList.toggle('active', parseInt(seg.dataset.idx) === currentIdx);
+    });
+}
+
+function showSlide(index) {
+    if (index < 0 || index >= SLIDES.length) return;
+    currentSlide = index;
+    const slide = SLIDES[index];
+    document.getElementById('slide-id').textContent = slide.id;
+    document.getElementById('slide-title').textContent = slide.title;
+    const contentEl = document.getElementById('slide-content');
+    contentEl.style.animation = 'none';
+    contentEl.offsetHeight; // 리플로우 트리거
+    contentEl.style.animation = '';
+    contentEl.innerHTML = slide.content;
+    const badge = document.getElementById('slide-badge');
+    if (slide.hasAudio) {
+        badge.textContent = '🎵 오디오 포함';
+        badge.className = 'badge-audio';
+    } else {
+        badge.textContent = '📖 교안 전용';
+        badge.className = 'badge-no-audio';
+    }
+    // 네비게이션 도트 활성화
+    document.querySelectorAll('.nav-dot').forEach((dot, i) => {
+        dot.classList.toggle('active', i === index);
+    });
+    // 인덱스 패널 활성화
+    document.querySelectorAll('.index-item').forEach((item, i) => {
+        item.classList.toggle('active', i === index);
+        if (i === index) item.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+    });
+    // 오디오 맵 활성화
+    updateAudioMap(index);
+
+    window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+// 시간 기반 슬라이드 동기화 (정렬된 audioSlides 사용)
+function syncSlideToTime(t) {
+    let targetIdx = -1;
+    for (let i = audioSlides.length - 1; i >= 0; i--) {
+        if (t >= audioSlides[i].start) {
+            targetIdx = audioSlides[i].idx;
+            break;
+        }
+    }
+    if (targetIdx >= 0 && targetIdx !== currentSlide) {
+        showSlide(targetIdx);
+    }
+}
+
+function onTimeUpdate() {
+    const t = audio.currentTime;
+    seekBar.value = t;
+    updateTimeDisplay();
+    updateSubtitle(t);
+    if (!isAutoSync) return;
+    syncSlideToTime(t);
+}
+
+function updateTimeDisplay() {
+    const cur = formatTime(audio.currentTime);
+    const dur = formatTime(audio.duration || 0);
+    timeDisplay.textContent = cur + ' / ' + dur;
+}
+
+function formatTime(sec) {
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return m + ':' + (s < 10 ? '0' : '') + s;
+}
+
+function togglePlay() {
+    if (audio.paused) {
+        audio.play();
+        playBtn.textContent = '⏸';
+        isAutoSync = true;
+    } else {
+        audio.pause();
+        playBtn.textContent = '▶';
+    }
+}
+
+function changeSpeed(val) {
+    audio.playbackRate = parseFloat(val);
+}
+
+function skipTime(sec) {
+    audio.currentTime = Math.max(0, Math.min(audio.duration || 0, audio.currentTime + sec));
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+    if (e.code === 'ArrowLeft') { showSlide(currentSlide - 1); isAutoSync = false; }
+    if (e.code === 'ArrowRight') { showSlide(currentSlide + 1); isAutoSync = false; }
+});
+
+function updateSubtitle(t) {
+    if (typeof TRANSCRIPT === 'undefined' || TRANSCRIPT.length === 0) return;
+    const idx = findTranscriptIdx(t);
+    if (idx === lastSubIdx) return;
+    lastSubIdx = idx;
+    const el = document.getElementById('subtitle-text');
+    if (el) el.textContent = idx >= 0 ? TRANSCRIPT[idx].text : '';
+}
+
+function findTranscriptIdx(t) {
+    let lo = 0, hi = TRANSCRIPT.length - 1, result = -1;
+    while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        if (TRANSCRIPT[mid].start <= t) { result = mid; lo = mid + 1; }
+        else { hi = mid - 1; }
+    }
+    if (result >= 0 && t <= TRANSCRIPT[result].end) return result;
+    return -1;
+}
+
+init();
+
+</script>
+</body>
+</html>
